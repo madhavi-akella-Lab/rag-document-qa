@@ -2,9 +2,4 @@ streamlit
 PyPDF2
 sentence-transformers
 faiss-cpu
-tokenizers==0.19.1
-transformers==4.40.0
-torch==2.3.0
 numpy
-huggingface_hub
-accelerate
