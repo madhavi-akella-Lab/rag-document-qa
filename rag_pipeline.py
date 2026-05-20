@@ -2,7 +2,8 @@ import faiss
 import numpy as np
 from PyPDF2 import PdfReader
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch
 
 
 def get_models(st):
@@ -12,9 +13,13 @@ def get_models(st):
 
     @st.cache_resource
     def _load_llm():
-        return pipeline("text2text-generation", model="google/flan-t5-base", max_new_tokens=256)
+        tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+        model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
+        return tokenizer, model
 
-    return _load_embedder(), _load_llm()
+    embedder = _load_embedder()
+    tokenizer, model = _load_llm()
+    return embedder, (tokenizer, model)
 
 
 def extract_text_from_pdf(uploaded_file):
@@ -54,22 +59,19 @@ def search_index(query, index, chunks, embedder, top_k=4):
     query_vec = embedder.encode([query], show_progress_bar=False)
     query_vec = np.array(query_vec, dtype="float32")
     distances, indices = index.search(query_vec, top_k)
-    results = [chunks[i] for i in indices[0] if i < len(chunks)]
-    return results
+    return [chunks[i] for i in indices[0] if i < len(chunks)]
 
 
 def generate_answer(question, context_chunks, llm):
-    context = "\n\n".join(context_chunks)
+    tokenizer, model = llm
+    context = " ".join(context_chunks)
     prompt = (
-        f"Read the following document excerpts and answer the question accurately.\n\n"
-        f"Document:\n{context}\n\n"
-        f"Question: {question}\n\n"
-        f"Answer:"
+        f"Answer the question based on the context below.\n\n"
+        f"Context: {context[:1000]}\n\n"
+        f"Question: {question}\n\nAnswer:"
     )
-    words = prompt.split()
-    if len(words) > 1500:
-        prompt = " ".join(words[:1500])
-
-    result = llm(prompt)
-    answer = result[0]["generated_text"].strip()
-    return answer if answer else "I could not find a clear answer in the document. Try rephrasing your question."
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=200)
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+    return answer if answer else "I could not find a clear answer. Try rephrasing your question."
