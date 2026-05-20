@@ -8,7 +8,7 @@
 
 > **Ask questions about any PDF document and get accurate, context-aware answers powered by Retrieval-Augmented Generation (RAG).**
 
-🔗 **[Live Demo](https://your-app-link.streamlit.app)** | 📄 **[Project Write-up](#how-it-works)**
+🔗 **[Live Demo](https://rag-document-app-o6ltfwdnh6wdeswdxgfcec.streamlit.app)** | 📄 **[Project Write-up](#how-it-works)**
 
 ---
 
